@@ -119,6 +119,64 @@ def ask_tags(prompt, options):
     return tags
 
 
+def ask_choice_with_default(prompt, choices, current, allow_empty=False):
+    """Prompt to pick from a list, highlighting the current value."""
+    numbered = []
+    for i, c in enumerate(choices):
+        marker = " <--" if c == current else ""
+        numbered.append(f"  {i+1}. {c}{marker}")
+    print(f"{prompt}")
+    print("\n".join(numbered))
+    suffix = f" [{current}]" if current else ""
+    if allow_empty:
+        suffix += " (Enter to keep)"
+    while True:
+        val = input(f"Choice{suffix}: ").strip()
+        if not val:
+            return current
+        try:
+            idx = int(val) - 1
+            if 0 <= idx < len(choices):
+                return choices[idx]
+        except ValueError:
+            lower = val.lower()
+            for c in choices:
+                if c.lower() == lower:
+                    return c
+        print(f"  Pick 1-{len(choices)} or type the name.")
+
+
+def ask_tags_with_default(prompt, options, current):
+    """Prompt for multiple tags, showing current selection."""
+    numbered = []
+    for i, t in enumerate(options):
+        marker = " *" if t in current else ""
+        numbered.append(f"  {i+1}. {t}{marker}")
+    current_str = ", ".join(current) if current else "none"
+    print(f"{prompt} (current: {current_str})")
+    print("\n".join(numbered))
+    print("  Comma-separated numbers/names, Enter to keep, 'clear' to remove all")
+    val = input("Tags: ").strip()
+    if not val:
+        return current
+    if val.lower() == "clear":
+        return []
+    tags = []
+    for part in val.split(","):
+        part = part.strip()
+        try:
+            idx = int(part) - 1
+            if 0 <= idx < len(options):
+                tags.append(options[idx])
+        except ValueError:
+            lower = part.lower()
+            for opt in options:
+                if opt.lower() == lower:
+                    tags.append(opt)
+                    break
+    return tags
+
+
 def confirm(prompt, default=True):
     """Yes/no prompt."""
     hint = "Y/n" if default else "y/N"
@@ -456,6 +514,260 @@ def view_detail(args):
     print(f"No session found matching '{query}'.")
 
 
+# ── Editing sessions ─────────────────────────────────────────────────────
+
+
+def edit_session_cmd(args):
+    """Edit a previously created session."""
+    sessions = load_sessions()
+    if not sessions:
+        print("No sessions found.")
+        return
+
+    # If a date/index was passed, try to find it directly
+    if args:
+        session = find_session(sessions, args[0])
+    else:
+        session = sessions[-1]
+        print(f"\nMost recent session: {session['date']} at {session['gym']}")
+        if not confirm("Edit this session?"):
+            session = pick_session(sessions)
+            if not session:
+                return
+
+    if not session:
+        print(f"No session found matching '{args[0]}'.")
+        return
+
+    edit_session_menu(session, sessions)
+
+
+def find_session(sessions, query):
+    """Find a session by date prefix or 1-based reverse index."""
+    matches = [s for s in sessions if s["date"].startswith(query)]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        print(f"\nMultiple sessions match '{query}':")
+        for i, s in enumerate(matches):
+            print(f"  {i+1}. {s['date']} at {s['gym']}")
+        while True:
+            val = input("Pick one (number): ").strip()
+            try:
+                idx = int(val) - 1
+                if 0 <= idx < len(matches):
+                    return matches[idx]
+            except ValueError:
+                pass
+            print(f"  Pick 1-{len(matches)}.")
+    try:
+        idx = int(query)
+        if 1 <= idx <= len(sessions):
+            return sessions[-idx]
+    except ValueError:
+        pass
+    return None
+
+
+def edit_session_menu(session, sessions):
+    """Main edit menu for a session."""
+    while True:
+        print(f"\n{'═' * 50}")
+        print(f"  Editing: {session['date']} at {session['gym']}")
+        print(f"{'─' * 50}")
+        print("  1. Edit session info (date, gym, duration, etc.)")
+        print(f"  2. Edit a climb ({len(session.get('climbs', []))} climbs)")
+        print(f"  3. Delete a climb")
+        print(f"  4. Edit phases ({len(session.get('phases', []))} phases)")
+        print("  5. Done")
+        val = input("\nChoice [5]: ").strip()
+        if not val or val == "5":
+            save_sessions(sessions)
+            print("Changes saved.")
+            return
+        elif val == "1":
+            edit_session_info(session)
+        elif val == "2":
+            edit_climb_in_session(session)
+        elif val == "3":
+            delete_climb_in_session(session)
+        elif val == "4":
+            edit_phases_in_session(session)
+        else:
+            print("  Pick 1-5.")
+
+
+def edit_session_info(session):
+    """Edit session-level metadata."""
+    print("\n── Edit Session Info ──")
+    print("  Press Enter to keep current value.\n")
+    session["date"] = ask("Date", default=session["date"])
+    session["time"] = ask("Start time", default=session.get("time", ""))
+    session["gym"] = ask("Gym name", default=session["gym"])
+    session["duration_minutes"] = ask_int(
+        "Duration (minutes)", default=session["duration_minutes"], min_val=1
+    )
+    session["energy_level"] = ask_int(
+        "Energy level (1-5)", default=session["energy_level"], min_val=1, max_val=5
+    )
+    session["body_notes"] = ask(
+        "Body notes", default=session.get("body_notes", "") or "(empty)", required=False
+    )
+    if session["body_notes"] == "(empty)":
+        session["body_notes"] = ""
+    print("  Session info updated.")
+
+
+def edit_climb_in_session(session):
+    """Pick and edit a single climb."""
+    climbs = session.get("climbs", [])
+    if not climbs:
+        print("  No climbs to edit.")
+        return
+
+    print("\n── Pick a climb to edit ──")
+    for i, c in enumerate(climbs, 1):
+        grade = c["grade_range"]
+        if c.get("perceived_grade"):
+            grade += f" (felt {c['perceived_grade']})"
+        print(f"  {i}. {c['color']} {grade} — {c['outcome']}")
+
+    while True:
+        val = input(f"Climb number (1-{len(climbs)}): ").strip()
+        try:
+            idx = int(val) - 1
+            if 0 <= idx < len(climbs):
+                break
+        except ValueError:
+            pass
+        print(f"  Pick 1-{len(climbs)}.")
+
+    climb = climbs[idx]
+    edit_climb(climb, session)
+    print(f"  Climb {idx+1} updated.")
+
+
+def edit_climb(climb, session):
+    """Edit all fields of a climb, showing current values as defaults."""
+    print("\n── Edit Climb ──")
+    print("  Press Enter to keep current value.\n")
+
+    climb["color"] = ask("Hold color", default=climb["color"])
+    climb["grade_range"] = ask("Grade range", default=climb["grade_range"])
+    climb["perceived_grade"] = ask(
+        "Perceived grade", default=climb.get("perceived_grade", "") or "(empty)", required=False
+    )
+    if climb["perceived_grade"] == "(empty)":
+        climb["perceived_grade"] = ""
+    climb["attempts"] = ask_int("Attempts", default=climb.get("attempts", 1), min_val=1)
+    climb["outcome"] = ask_choice_with_default("Outcome:", OUTCOMES, climb.get("outcome", "sent"))
+    climb["felt_difficulty"] = ask_choice_with_default(
+        "Felt difficulty:", FELT_DIFFICULTIES, climb.get("felt_difficulty", ""), allow_empty=True
+    ) or ""
+    climb["terrain"] = ask_tags_with_default("Terrain:", TERRAIN_TAGS, climb.get("terrain", []))
+    climb["holds"] = ask_tags_with_default("Holds:", HOLD_TAGS, climb.get("holds", []))
+    climb["techniques"] = ask_tags_with_default(
+        "Techniques:", TECHNIQUE_TAGS, climb.get("techniques", [])
+    )
+
+    phase_names = [p["type"] for p in session.get("phases", [])]
+    if phase_names:
+        climb["phase"] = ask_choice_with_default(
+            "Phase:", phase_names, climb.get("phase", ""), allow_empty=True
+        ) or ""
+
+    climb["notes"] = ask(
+        "Notes", default=climb.get("notes", "") or "(empty)", required=False
+    )
+    if climb["notes"] == "(empty)":
+        climb["notes"] = ""
+
+
+def delete_climb_in_session(session):
+    """Delete a climb from the session."""
+    climbs = session.get("climbs", [])
+    if not climbs:
+        print("  No climbs to delete.")
+        return
+
+    print("\n── Delete a climb ──")
+    for i, c in enumerate(climbs, 1):
+        grade = c["grade_range"]
+        print(f"  {i}. {c['color']} {grade} — {c['outcome']}")
+
+    while True:
+        val = input(f"Climb number to delete (1-{len(climbs)}): ").strip()
+        try:
+            idx = int(val) - 1
+            if 0 <= idx < len(climbs):
+                break
+        except ValueError:
+            pass
+        print(f"  Pick 1-{len(climbs)}.")
+
+    removed = climbs.pop(idx)
+    print(f"  Deleted: {removed['color']} {removed['grade_range']} — {removed['outcome']}")
+
+
+def edit_phases_in_session(session):
+    """Edit or add/remove phases."""
+    phases = session.get("phases", [])
+
+    while True:
+        print("\n── Phases ──")
+        if phases:
+            for i, p in enumerate(phases, 1):
+                print(f"  {i}. {p['type']} ({p['duration_minutes']}min)")
+        else:
+            print("  No phases.")
+
+        print(f"\n  a. Add a phase")
+        if phases:
+            print(f"  e. Edit a phase")
+            print(f"  d. Delete a phase")
+        print(f"  q. Done with phases")
+
+        val = input("Choice: ").strip().lower()
+        if val == "q" or not val:
+            break
+        elif val == "a":
+            phase_type = ask_choice("Phase type:", PHASE_TYPES)
+            duration = ask_int("Duration (minutes)", min_val=1)
+            notes = ask("Notes", required=False)
+            phases.append({"type": phase_type, "duration_minutes": duration, "notes": notes or ""})
+            print(f"  Added {phase_type} phase.")
+        elif val == "e" and phases:
+            idx = _pick_phase_index(phases)
+            if idx is not None:
+                p = phases[idx]
+                p["type"] = ask_choice_with_default("Phase type:", PHASE_TYPES, p["type"])
+                p["duration_minutes"] = ask_int("Duration (minutes)", default=p["duration_minutes"], min_val=1)
+                p["notes"] = ask("Notes", default=p.get("notes", "") or "(empty)", required=False)
+                if p["notes"] == "(empty)":
+                    p["notes"] = ""
+                print(f"  Phase updated.")
+        elif val == "d" and phases:
+            idx = _pick_phase_index(phases)
+            if idx is not None:
+                removed = phases.pop(idx)
+                print(f"  Deleted {removed['type']} phase.")
+
+    session["phases"] = phases
+
+
+def _pick_phase_index(phases):
+    """Helper to pick a phase by number."""
+    while True:
+        val = input(f"Phase number (1-{len(phases)}): ").strip()
+        try:
+            idx = int(val) - 1
+            if 0 <= idx < len(phases):
+                return idx
+        except ValueError:
+            pass
+        print(f"  Pick 1-{len(phases)}.")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
@@ -465,6 +777,7 @@ climb.py — Rock climbing session tracker
 Commands:
   new               Create a new climbing session
   add               Add climbs to the most recent session
+  edit [DATE|N]     Edit a session (metadata, climbs, phases)
   view [filters]    View past sessions
     --gym, -g NAME      Filter by gym name
     --date, -d DATE     Filter by date (prefix match, e.g. 2026-02)
@@ -476,10 +789,12 @@ Commands:
 Examples:
   python climb.py new
   python climb.py add
+  python climb.py edit              # edit most recent session
+  python climb.py edit 2026-02-08   # edit by date
+  python climb.py edit 1            # edit most recent (by index)
   python climb.py view --last 5
   python climb.py view --gym "Movement" --grade V5
   python climb.py show 2026-02-08
-  python climb.py show 1           # most recent session
 """
 
 
@@ -495,6 +810,8 @@ def main():
         create_session()
     elif cmd == "add":
         add_to_session()
+    elif cmd == "edit":
+        edit_session_cmd(args[1:])
     elif cmd == "view":
         view_sessions(args[1:])
     elif cmd == "show":
