@@ -1,0 +1,53 @@
+{% if session.climbs %}
+    {% for climb in session.climbs %}
+    <div class="climb-card" id="climb-{{ loop.index0 }}">
+        <div class="climb-header">
+            <div>
+                <span class="climb-grade">{{ climb.grade_range }}</span>
+                {% if climb.perceived_grade %}
+                <span class="text-muted">(felt {{ climb.perceived_grade }})</span>
+                {% endif %}
+            </div>
+            <span class="outcome-badge outcome-{{ climb.outcome }}">{{ climb.outcome }}</span>
+        </div>
+        <div class="climb-details">
+            <span class="climb-color">{{ climb.color }}</span>
+            {% if climb.attempts and climb.attempts > 1 %}
+            &middot; {{ climb.attempts }} attempts
+            {% endif %}
+            {% if climb.felt_difficulty %}
+            &middot; {{ climb.felt_difficulty }}
+            {% endif %}
+            {% if climb.phase %}
+            &middot; {{ climb.phase }}
+            {% endif %}
+        </div>
+        {% set tags = (climb.terrain or []) + (climb.holds or []) + (climb.techniques or []) %}
+        {% if tags %}
+        <div class="tag-chips">
+            {% for tag in tags %}
+            <span class="tag-chip">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if climb.notes %}
+        <div class="climb-notes">{{ climb.notes }}</div>
+        {% endif %}
+        <div class="climb-actions">
+            <a href="#"
+               hx-get="/sessions/{{ session.id }}/climbs/{{ loop.index0 }}/edit"
+               hx-target="#climb-form-area"
+               hx-swap="innerHTML"
+               role="button" class="outline secondary">Edit</a>
+            <button hx-delete="/sessions/{{ session.id }}/climbs/{{ loop.index0 }}"
+                    hx-target="#climb-list"
+                    hx-swap="innerHTML"
+                    hx-confirm="Delete this climb?"
+                    class="outline secondary"
+                    style="color: var(--failed); border-color: var(--failed);">Delete</button>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <p class="text-muted" style="text-align: center; padding: 1rem;">No climbs yet. Add one below!</p>
+{% endif %}

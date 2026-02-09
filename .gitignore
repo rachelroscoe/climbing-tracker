@@ -6,3 +6,4 @@ build/
 .venv/
 venv/
 sessions.json
+sessions.json.lock

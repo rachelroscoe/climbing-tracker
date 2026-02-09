@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Sessions — Climbing Tracker{% endblock %}
+
+{% block content %}
+<div style="margin-top: 1rem;">
+    <details {% if active_filters %}open{% endif %}>
+        <summary>Filter sessions</summary>
+        <form method="get" action="/" class="filter-bar">
+            <div class="filter-field">
+                <label for="gym">Gym</label>
+                <select name="gym" id="gym">
+                    <option value="">All gyms</option>
+                    {% for g in gyms %}
+                    <option value="{{ g }}" {% if filters.gym == g %}selected{% endif %}>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="date">Date</label>
+                <input type="text" name="date" id="date" placeholder="2026-02" value="{{ filters.date or '' }}">
+            </div>
+            <div class="filter-field">
+                <label for="grade">Grade</label>
+                <input type="text" name="grade" id="grade" placeholder="V4" value="{{ filters.grade or '' }}">
+            </div>
+            <div>
+                <label>&nbsp;</label>
+                <button type="submit" style="margin-bottom: 0;">Filter</button>
+            </div>
+        </form>
+    </details>
+</div>
+
+{% if sessions %}
+    {% for session in sessions %}
+    <a href="/sessions/{{ session.id }}" class="session-card">
+        <div class="session-header">
+            <span class="gym-name">{{ session.gym }}</span>
+            <span class="session-date">{{ session.date }}</span>
+        </div>
+        <div class="session-meta">
+            {{ session.duration_minutes }}min
+            &middot;
+            <span class="energy-dots">
+                {% for i in range(5) %}
+                <span class="energy-dot {% if i < session.energy_level %}filled{% endif %}"></span>
+                {% endfor %}
+            </span>
+            {% if session.climbs %}
+            &middot; {{ session.climbs|length }} climb{{ "s" if session.climbs|length != 1 }}
+            {% endif %}
+        </div>
+        {% if session.climbs %}
+        <div class="outcome-dots">
+            {% for climb in session.climbs %}
+            <span class="outcome-dot outcome-{{ climb.outcome }}" title="{{ climb.grade_range }} {{ climb.outcome }}"></span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </a>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        <p>No sessions yet</p>
+        <a href="/sessions/new" role="button">Log your first session</a>
+    </div>
+{% endif %}
+{% endblock %}

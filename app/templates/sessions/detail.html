@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ session.gym }} {{ session.date }} — Climbing Tracker{% endblock %}
+
+{% block content %}
+<div style="margin-top: 1rem;">
+    <!-- Session header -->
+    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <h2 style="margin-bottom: 0.25rem;">{{ session.gym }}</h2>
+        <a href="/sessions/{{ session.id }}/edit" class="text-muted">Edit</a>
+    </div>
+    <p class="text-muted" style="margin-bottom: 0.5rem;">
+        {{ session.date }} {{ session.time or '' }}
+        &middot; {{ session.duration_minutes }}min
+        &middot; Energy:
+        <span class="energy-dots">
+            {% for i in range(5) %}
+            <span class="energy-dot {% if i < session.energy_level %}filled{% endif %}"></span>
+            {% endfor %}
+        </span>
+    </p>
+    {% if session.body_notes %}
+    <p class="text-muted" style="margin-bottom: 0.5rem;">{{ session.body_notes }}</p>
+    {% endif %}
+
+    <!-- Phase bar -->
+    {% if session.phases %}
+    {% set total_phase_min = session.phases | map(attribute='duration_minutes') | sum %}
+    <div class="phase-bar">
+        {% for phase in session.phases %}
+        <div class="phase-segment phase-{{ phase.type }}"
+             style="flex: {{ phase.duration_minutes }};"
+             title="{{ phase.type }} ({{ phase.duration_minutes }}min){% if phase.notes %} — {{ phase.notes }}{% endif %}">
+            {{ phase.type }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Phases management -->
+    <div id="phase-section">
+        {% include "partials/phase_list.html" %}
+    </div>
+
+    <!-- Climbs -->
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 1rem;">
+        <h3>Climbs ({{ session.climbs|length }})</h3>
+    </div>
+
+    <div id="climb-list">
+        {% include "climbs/list.html" %}
+    </div>
+
+    <div id="climb-form-area"></div>
+
+    <button hx-get="/sessions/{{ session.id }}/climbs/new"
+            hx-target="#climb-form-area"
+            hx-swap="innerHTML"
+            class="outline"
+            style="width: 100%; margin-top: 0.5rem;"
+            id="add-climb-btn">
+        + Add Climb
+    </button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// When "Save & Add Another" is used, re-open the climb form
+document.body.addEventListener('climbAdded', function() {
+    htmx.ajax('GET', '/sessions/{{ session.id }}/climbs/new', '#climb-form-area');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Edit Session — Climbing Tracker{% endblock %}
+
+{% block content %}
+<h2 style="margin-top: 1rem;">Edit Session</h2>
+
+<form method="post" action="/sessions/{{ session.id }}/edit">
+    <div class="form-row">
+        <div class="form-section">
+            <label for="date">Date</label>
+            <input type="date" name="date" id="date" value="{{ session.date }}" required>
+        </div>
+        <div class="form-section">
+            <label for="time">Time</label>
+            <input type="time" name="time" id="time" value="{{ session.time or '' }}">
+        </div>
+    </div>
+
+    <div class="form-section">
+        <label for="gym">Gym</label>
+        <input type="text" name="gym" id="gym" list="gym-list" value="{{ session.gym }}" required>
+        <datalist id="gym-list">
+            {% for g in gyms %}
+            <option value="{{ g }}">
+            {% endfor %}
+        </datalist>
+    </div>
+
+    <div class="form-row">
+        <div class="form-section">
+            <label for="duration_minutes">Duration (min)</label>
+            <input type="number" name="duration_minutes" id="duration_minutes"
+                   value="{{ session.duration_minutes }}" min="1" required>
+        </div>
+        <div class="form-section">
+            <label>Energy</label>
+            <div class="btn-group" id="energy-group">
+                {% for i in range(1, 6) %}
+                <button type="button" class="btn-option energy-opt {% if i == session.energy_level %}selected{% endif %}"
+                        data-value="{{ i }}" onclick="selectOne(this, 'energy-group', 'energy_level')">
+                    {{ i }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="energy_level" id="energy_level" value="{{ session.energy_level }}">
+        </div>
+    </div>
+
+    <div class="form-section">
+        <label for="body_notes">Body notes</label>
+        <input type="text" name="body_notes" id="body_notes"
+               value="{{ session.body_notes or '' }}" placeholder="Injuries, soreness, etc.">
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+        <button type="submit">Save Changes</button>
+        <a href="/sessions/{{ session.id }}" role="button" class="outline secondary">Cancel</a>
+    </div>
+</form>
+
+<hr>
+
+<details>
+    <summary style="color: var(--failed);">Delete this session</summary>
+    <p>This will permanently delete this session and all its climbs.</p>
+    <button hx-delete="/sessions/{{ session.id }}"
+            hx-confirm="Delete this session? This cannot be undone."
+            class="secondary outline"
+            style="color: var(--failed); border-color: var(--failed);">
+        Delete Session
+    </button>
+</details>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectOne(btn, groupId, hiddenId) {
+    document.querySelectorAll('#' + groupId + ' .btn-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById(hiddenId).value = btn.dataset.value;
+}
+</script>
+{% endblock %}

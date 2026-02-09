@@ -1,0 +1,215 @@
+{% set is_edit = climb is defined and climb %}
+{% set action = "/sessions/" ~ session_id ~ "/climbs/" ~ climb_index ~ "/edit" if is_edit else "/sessions/" ~ session_id ~ "/climbs" %}
+
+<div style="border: 2px solid var(--pico-primary); border-radius: 8px; padding: 1rem; margin-top: 0.5rem;">
+    <h4 style="margin-bottom: 0.75rem;">{{ "Edit Climb" if is_edit else "Add Climb" }}</h4>
+
+    <form hx-post="{{ action }}"
+          hx-target="#climb-list"
+          hx-swap="innerHTML"
+          id="climb-form">
+
+        <div class="form-row">
+            <div class="form-section">
+                <label for="color">Hold color</label>
+                <input type="text" name="color" id="color"
+                       value="{{ climb.color if is_edit else '' }}"
+                       placeholder="e.g. blue" required>
+            </div>
+            <div class="form-section">
+                <label>Grade range</label>
+                <div class="grade-picker">
+                    <select name="grade_low" id="grade_low">
+                        {% for g in V_GRADES %}
+                        <option value="{{ g }}" {% if is_edit and climb.grade_range.startswith(g) %}selected{% endif %}>{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="grade-dash">-</span>
+                    <select name="grade_high" id="grade_high">
+                        <option value="">same</option>
+                        {% for g in V_GRADES %}
+                        <option value="{{ g }}" {% if is_edit and '-' in climb.grade_range and climb.grade_range.split('-')[1] == g %}selected{% endif %}>{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-section">
+                <label for="perceived_grade">Perceived grade <span class="text-muted">(opt.)</span></label>
+                <select name="perceived_grade" id="perceived_grade">
+                    <option value="">--</option>
+                    {% for g in V_GRADES %}
+                    <option value="{{ g }}" {% if is_edit and climb.perceived_grade == g %}selected{% endif %}>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-section">
+                <label for="attempts">Attempts</label>
+                <input type="number" name="attempts" id="attempts"
+                       value="{{ climb.attempts if is_edit else 1 }}" min="1">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <label>Outcome</label>
+            <div class="btn-group" id="outcome-group">
+                {% for o in OUTCOMES %}
+                <button type="button"
+                        class="btn-option outcome-opt {% if is_edit and climb.outcome == o %}selected{% elif not is_edit and o == 'sent' %}selected{% endif %}"
+                        data-value="{{ o }}"
+                        onclick="selectOne(this, 'outcome-group', 'outcome')">
+                    {{ o }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="outcome" id="outcome" value="{{ climb.outcome if is_edit else 'sent' }}">
+        </div>
+
+        <div class="form-section">
+            <label>Felt difficulty <span class="text-muted">(opt.)</span></label>
+            <div class="btn-group" id="felt-group">
+                {% for f in FELT_DIFFICULTIES %}
+                <button type="button"
+                        class="btn-option {% if is_edit and climb.felt_difficulty == f %}selected{% endif %}"
+                        data-value="{{ f }}"
+                        onclick="selectOneOptional(this, 'felt-group', 'felt_difficulty')">
+                    {{ f }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="felt_difficulty" id="felt_difficulty"
+                   value="{{ climb.felt_difficulty if is_edit else '' }}">
+        </div>
+
+        <div class="form-section">
+            <label>Terrain</label>
+            <div class="btn-group">
+                {% for t in TERRAIN_TAGS %}
+                <button type="button"
+                        class="chip-toggle {% if is_edit and t in climb.terrain %}selected{% endif %}"
+                        data-name="terrain"
+                        data-value="{{ t }}"
+                        onclick="toggleChip(this)">
+                    {{ t }}
+                </button>
+                {% endfor %}
+            </div>
+            {% if is_edit %}
+                {% for t in climb.terrain %}
+                <input type="hidden" name="terrain" value="{{ t }}" class="tag-hidden terrain-hidden">
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="form-section">
+            <label>Holds</label>
+            <div class="btn-group">
+                {% for h in HOLD_TAGS %}
+                <button type="button"
+                        class="chip-toggle {% if is_edit and h in climb.holds %}selected{% endif %}"
+                        data-name="holds"
+                        data-value="{{ h }}"
+                        onclick="toggleChip(this)">
+                    {{ h }}
+                </button>
+                {% endfor %}
+            </div>
+            {% if is_edit %}
+                {% for h in climb.holds %}
+                <input type="hidden" name="holds" value="{{ h }}" class="tag-hidden holds-hidden">
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="form-section">
+            <label>Techniques</label>
+            <div class="btn-group">
+                {% for t in TECHNIQUE_TAGS %}
+                <button type="button"
+                        class="chip-toggle {% if is_edit and t in climb.techniques %}selected{% endif %}"
+                        data-name="techniques"
+                        data-value="{{ t }}"
+                        onclick="toggleChip(this)">
+                    {{ t }}
+                </button>
+                {% endfor %}
+            </div>
+            {% if is_edit %}
+                {% for t in climb.techniques %}
+                <input type="hidden" name="techniques" value="{{ t }}" class="tag-hidden techniques-hidden">
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        {% if phases %}
+        <div class="form-section">
+            <label for="phase">Phase <span class="text-muted">(opt.)</span></label>
+            <select name="phase" id="phase">
+                <option value="">--</option>
+                {% for p in phases %}
+                <option value="{{ p }}" {% if is_edit and climb.phase == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="form-section">
+            <label for="notes">Notes <span class="text-muted">(opt.)</span></label>
+            <input type="text" name="notes" id="notes"
+                   value="{{ climb.notes if is_edit else '' }}" placeholder="Any notes about this climb">
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit">{{ "Save Changes" if is_edit else "Save Climb" }}</button>
+            {% if not is_edit %}
+            <button type="submit" name="add_another" value="1" class="outline">Save & Add Another</button>
+            {% endif %}
+            <button type="button" class="outline secondary"
+                    onclick="document.getElementById('climb-form-area').innerHTML = ''">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function selectOne(btn, groupId, hiddenId) {
+    document.querySelectorAll('#' + groupId + ' .btn-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById(hiddenId).value = btn.dataset.value;
+}
+
+function selectOneOptional(btn, groupId, hiddenId) {
+    const hidden = document.getElementById(hiddenId);
+    if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+        hidden.value = '';
+    } else {
+        document.querySelectorAll('#' + groupId + ' .btn-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        hidden.value = btn.dataset.value;
+    }
+}
+
+function toggleChip(btn) {
+    const name = btn.dataset.name;
+    const value = btn.dataset.value;
+    const form = document.getElementById('climb-form');
+
+    if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+        // Remove hidden input
+        const inputs = form.querySelectorAll('input[name="' + name + '"][value="' + value + '"]');
+        inputs.forEach(i => i.remove());
+    } else {
+        btn.classList.add('selected');
+        // Add hidden input
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        input.className = 'tag-hidden ' + name + '-hidden';
+        form.appendChild(input);
+    }
+}
+</script>

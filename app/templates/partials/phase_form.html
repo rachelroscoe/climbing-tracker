@@ -1,0 +1,35 @@
+{% set is_edit = phase is defined and phase %}
+{% set action = "/sessions/" ~ session_id ~ "/phases/" ~ phase_index ~ "/edit" if is_edit else "/sessions/" ~ session_id ~ "/phases" %}
+
+<div style="border: 1px solid var(--pico-primary); border-radius: 8px; padding: 0.75rem; margin-top: 0.5rem;">
+    <form hx-post="{{ action }}" hx-target="#phase-section" hx-swap="innerHTML">
+        <div class="form-row">
+            <div class="form-section">
+                <label for="phase_type">Type</label>
+                <select name="type" id="phase_type" required>
+                    {% for pt in PHASE_TYPES %}
+                    <option value="{{ pt }}" {% if is_edit and phase.type == pt %}selected{% endif %}>{{ pt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-section">
+                <label for="phase_duration">Minutes</label>
+                <input type="number" name="duration_minutes" id="phase_duration"
+                       value="{{ phase.duration_minutes if is_edit else 15 }}" min="1" required>
+            </div>
+        </div>
+        <div class="form-section">
+            <label for="phase_notes">Notes <span class="text-muted">(opt.)</span></label>
+            <input type="text" name="notes" id="phase_notes"
+                   value="{{ phase.notes if is_edit else '' }}" placeholder="Phase notes">
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">
+                {{ "Save" if is_edit else "Add Phase" }}
+            </button>
+            <button type="button" class="outline secondary"
+                    style="font-size: 0.85rem; padding: 0.3rem 0.6rem;"
+                    onclick="document.getElementById('phase-form-area').innerHTML = ''">Cancel</button>
+        </div>
+    </form>
+</div>
