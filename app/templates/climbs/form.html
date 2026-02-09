@@ -11,10 +11,13 @@
 
         <div class="form-row">
             <div class="form-section">
-                <label for="color">Hold color</label>
-                <input type="text" name="color" id="color"
-                       value="{{ climb.color if is_edit else '' }}"
-                       placeholder="e.g. blue" required>
+                <label for="color">Grade color</label>
+                <select name="color" id="color" required onchange="autoGrade(this.value)">
+                    <option value="">-- pick --</option>
+                    {% for c in ["green", "yellow", "orange", "red", "purple", "black", "white"] %}
+                    <option value="{{ c }}" {% if is_edit and climb.color == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="form-section">
                 <label>Grade range</label>
@@ -173,6 +176,23 @@
 </div>
 
 <script>
+var COLOR_GRADES = {
+    'green':  ['V0', 'V1'],
+    'yellow': ['V1', 'V2'],
+    'orange': ['V2', 'V3'],
+    'red':    ['V4', 'V5'],
+    'purple': ['V6', 'V7'],
+    'black':  ['V8', 'V9'],
+    'white':  ['V10', '']
+};
+
+function autoGrade(color) {
+    var grades = COLOR_GRADES[color];
+    if (!grades) return;
+    document.getElementById('grade_low').value = grades[0];
+    document.getElementById('grade_high').value = grades[1];
+}
+
 function selectOne(btn, groupId, hiddenId) {
     document.querySelectorAll('#' + groupId + ' .btn-option').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');

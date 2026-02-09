@@ -35,8 +35,8 @@
     {% for session in sessions %}
     <a href="/sessions/{{ session.id }}" class="session-card">
         <div class="session-header">
-            <span class="gym-name">{{ session.gym }}</span>
-            <span class="session-date">{{ session.date }}</span>
+            <span class="session-date-title">{{ session.date }}</span>
+            <span class="session-gym">{{ session.gym }}</span>
         </div>
         <div class="session-meta">
             {{ session.duration_minutes }}min

@@ -81,9 +81,10 @@ async def add_climb(
 
     response = _climb_list_html(request, session)
 
-    # If "Save & Add Another", re-open the form via HX-Trigger
     if add_another:
         response.headers["HX-Trigger"] = "climbAdded"
+    else:
+        response.headers["HX-Trigger"] = "climbSaved"
 
     return response
 
@@ -149,7 +150,9 @@ async def update_climb(
     if not session:
         return HTMLResponse("Not found", status_code=404)
 
-    return _climb_list_html(request, session)
+    response = _climb_list_html(request, session)
+    response.headers["HX-Trigger"] = "climbSaved"
+    return response
 
 
 @router.delete("/sessions/{session_id}/climbs/{climb_index}")

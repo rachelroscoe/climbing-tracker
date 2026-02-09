@@ -69,5 +69,10 @@
 document.body.addEventListener('climbAdded', function() {
     htmx.ajax('GET', '/sessions/{{ session.id }}/climbs/new', '#climb-form-area');
 });
+
+// When "Save Climb" or edit save is used, clear the form area
+document.body.addEventListener('climbSaved', function() {
+    document.getElementById('climb-form-area').innerHTML = '';
+});
 </script>
 {% endblock %}

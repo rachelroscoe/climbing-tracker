@@ -78,14 +78,14 @@ nav.top-nav .nav-links a {
     margin-bottom: 0.25rem;
 }
 
-.session-card .gym-name {
-    font-weight: 600;
+.session-card .session-date-title {
+    font-weight: 700;
     font-size: 1.05rem;
 }
 
-.session-card .session-date {
+.session-card .session-gym {
     font-size: 0.85rem;
-    opacity: 0.7;
+    opacity: 0.6;
 }
 
 .session-card .session-meta {
