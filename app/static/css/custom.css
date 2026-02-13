@@ -223,7 +223,7 @@ nav.top-nav .nav-links a {
     padding: 0.45rem 0.75rem;
     border: 2px solid var(--pico-muted-border-color);
     border-radius: 8px;
-    background: transparent;
+    background: var(--pico-background-color);
     cursor: pointer;
     font-size: 0.85rem;
     min-height: 44px;
@@ -255,7 +255,7 @@ nav.top-nav .nav-links a {
     padding: 0.35rem 0.65rem;
     border: 1.5px solid var(--pico-muted-border-color);
     border-radius: 999px;
-    background: transparent;
+    background: var(--pico-background-color);
     cursor: pointer;
     font-size: 0.8rem;
     min-height: 36px;
