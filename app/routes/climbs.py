@@ -1,5 +1,6 @@
 """Climb and phase routes."""
 
+import json
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from typing import Optional
@@ -163,6 +164,19 @@ async def delete_climb(request: Request, session_id: str, climb_index: int):
     return _climb_list_html(request, session)
 
 
+@router.post("/sessions/{session_id}/climbs/reorder")
+async def reorder_climbs(request: Request, session_id: str):
+    body = await request.body()
+    try:
+        order = json.loads(body)
+    except (json.JSONDecodeError, ValueError):
+        return HTMLResponse("Invalid order", status_code=400)
+    session = repo.reorder_climbs(session_id, order)
+    if not session:
+        return HTMLResponse("Not found", status_code=404)
+    return _climb_list_html(request, session)
+
+
 # ── Phase routes ─────────────────────────────────────────────────────────
 
 
@@ -225,6 +239,19 @@ async def update_phase(
 @router.delete("/sessions/{session_id}/phases/{phase_index}")
 async def delete_phase(request: Request, session_id: str, phase_index: int):
     session = repo.delete_phase(session_id, phase_index)
+    if not session:
+        return HTMLResponse("Not found", status_code=404)
+    return _phase_section_html(request, session)
+
+
+@router.post("/sessions/{session_id}/phases/reorder")
+async def reorder_phases(request: Request, session_id: str):
+    body = await request.body()
+    try:
+        order = json.loads(body)
+    except (json.JSONDecodeError, ValueError):
+        return HTMLResponse("Invalid order", status_code=400)
+    session = repo.reorder_phases(session_id, order)
     if not session:
         return HTMLResponse("Not found", status_code=404)
     return _phase_section_html(request, session)

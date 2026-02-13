@@ -177,3 +177,29 @@ class JSONSessionRepository(SessionRepository):
             sessions = self._load()
         gyms = sorted(set(s.get("gym", "") for s in sessions if s.get("gym")))
         return gyms
+
+    def reorder_climbs(self, session_id: str, order: list[int]) -> Optional[dict]:
+        with self.lock:
+            sessions = self._load()
+            session = self._find(sessions, session_id)
+            if not session:
+                return None
+            climbs = session.get("climbs", [])
+            if sorted(order) != list(range(len(climbs))):
+                return None
+            session["climbs"] = [climbs[i] for i in order]
+            self._save(sessions)
+        return session
+
+    def reorder_phases(self, session_id: str, order: list[int]) -> Optional[dict]:
+        with self.lock:
+            sessions = self._load()
+            session = self._find(sessions, session_id)
+            if not session:
+                return None
+            phases = session.get("phases", [])
+            if sorted(order) != list(range(len(phases))):
+                return None
+            session["phases"] = [phases[i] for i in order]
+            self._save(sessions)
+        return session

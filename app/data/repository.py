@@ -57,3 +57,11 @@ class SessionRepository(ABC):
     @abstractmethod
     def get_all_gyms(self) -> list[str]:
         """Return distinct gym names from all sessions."""
+
+    @abstractmethod
+    def reorder_climbs(self, session_id: str, order: list[int]) -> Optional[dict]:
+        """Reorder climbs by a list of old indices in new order."""
+
+    @abstractmethod
+    def reorder_phases(self, session_id: str, order: list[int]) -> Optional[dict]:
+        """Reorder phases by a list of old indices in new order."""

@@ -1,8 +1,9 @@
 {% if session.climbs %}
     {% for climb in session.climbs %}
-    <div class="climb-card" id="climb-{{ loop.index0 }}">
+    <div class="climb-card" id="climb-{{ loop.index0 }}" data-index="{{ loop.index0 }}">
         <div class="climb-header">
-            <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="drag-handle" title="Drag to reorder">&#x2630;</span>
                 <span class="climb-grade">{{ climb.grade_range }}</span>
                 {% if climb.perceived_grade %}
                 <span class="text-muted">(felt {{ climb.perceived_grade }})</span>
@@ -48,6 +49,35 @@
         </div>
     </div>
     {% endfor %}
+
+    <script>
+    (function() {
+        var el = document.getElementById('climb-list');
+        if (!el || !window.Sortable) return;
+        Sortable.create(el, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function(evt) {
+                var items = el.querySelectorAll('.climb-card');
+                var order = Array.from(items).map(function(item) {
+                    return parseInt(item.dataset.index);
+                });
+                fetch('/sessions/{{ session.id }}/climbs/reorder', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(order)
+                }).then(function(resp) {
+                    return resp.text();
+                }).then(function(html) {
+                    el.innerHTML = html;
+                    // Re-process any htmx attributes in the new content
+                    htmx.process(el);
+                });
+            }
+        });
+    })();
+    </script>
 {% else %}
     <p class="text-muted" style="text-align: center; padding: 1rem;">No climbs yet. Add one below!</p>
 {% endif %}

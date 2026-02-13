@@ -1,11 +1,15 @@
 {% if session.phases %}
 <details style="margin-bottom: 0.5rem;">
     <summary class="text-muted">Phases ({{ session.phases|length }})</summary>
+    <div id="phase-sortable">
     {% for phase in session.phases %}
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid var(--pico-muted-border-color);">
-        <div>
-            <strong>{{ phase.type }}</strong> — {{ phase.duration_minutes }}min
-            {% if phase.notes %}<span class="text-muted">· {{ phase.notes }}</span>{% endif %}
+    <div class="phase-item" data-index="{{ loop.index0 }}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid var(--pico-muted-border-color);">
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span class="drag-handle drag-handle-sm" title="Drag to reorder">&#x2630;</span>
+            <div>
+                <strong>{{ phase.type }}</strong> — {{ phase.duration_minutes }}min
+                {% if phase.notes %}<span class="text-muted">· {{ phase.notes }}</span>{% endif %}
+            </div>
         </div>
         <div style="display: flex; gap: 0.25rem;">
             <a href="#" hx-get="/sessions/{{ session.id }}/phases/{{ loop.index0 }}/edit"
@@ -19,12 +23,41 @@
         </div>
     </div>
     {% endfor %}
+    </div>
     <div id="phase-form-area"></div>
     <button hx-get="/sessions/{{ session.id }}/phases/new"
             hx-target="#phase-form-area" hx-swap="innerHTML"
             class="outline secondary" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.3rem 0.6rem;">
         + Add Phase
     </button>
+
+    <script>
+    (function() {
+        var el = document.getElementById('phase-sortable');
+        if (!el || !window.Sortable) return;
+        Sortable.create(el, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function(evt) {
+                var items = el.querySelectorAll('.phase-item');
+                var order = Array.from(items).map(function(item) {
+                    return parseInt(item.dataset.index);
+                });
+                fetch('/sessions/{{ session.id }}/phases/reorder', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(order)
+                }).then(function(resp) {
+                    return resp.text();
+                }).then(function(html) {
+                    document.getElementById('phase-section').innerHTML = html;
+                    htmx.process(document.getElementById('phase-section'));
+                });
+            }
+        });
+    })();
+    </script>
 </details>
 {% else %}
 <div id="phase-form-area"></div>
